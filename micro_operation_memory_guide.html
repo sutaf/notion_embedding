@@ -1,0 +1,159 @@
+
+<style>
+  .tab-btn { background: none; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 7px 14px; font-size: 13px; color: var(--color-text-secondary); cursor: pointer; transition: all .18s; }
+  .tab-btn.active { background: var(--color-background-info); color: var(--color-text-info); border-color: var(--color-border-info); font-weight: 500; }
+  .tab-btn:hover:not(.active) { background: var(--color-background-secondary); }
+  .step-row { display: flex; align-items: flex-start; gap: 12px; margin: 8px 0; }
+  .step-num { min-width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; margin-top: 2px; }
+  .code-pill { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 6px; padding: 4px 10px; font-family: var(--font-mono); font-size: 13px; color: var(--color-text-primary); }
+  .hint-box { background: var(--color-background-warning); border: 0.5px solid var(--color-border-warning); border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 13px; color: var(--color-text-warning); margin-top: 10px; }
+  .memo-box { background: var(--color-background-success); border: 0.5px solid var(--color-border-success); border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 13px; color: var(--color-text-success); margin-top: 10px; }
+  .arrow-down { text-align: center; color: var(--color-text-secondary); font-size: 16px; margin: 2px 0; }
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 16px 18px; }
+  .reg-badge { display: inline-block; border-radius: 4px; padding: 1px 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; margin: 0 1px; }
+  .reg-pc  { background: var(--color-background-info);    color: var(--color-text-info); }
+  .reg-mar { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .reg-mbr { background: #e8f5e9; color: #2e7d32; }
+  .reg-ir  { background: #fce4ec; color: #c62828; }
+  .reg-ac  { background: #ede7f6; color: #4527a0; }
+  @media (prefers-color-scheme: dark) {
+    .reg-mbr { background: #1b5e20; color: #a5d6a7; }
+    .reg-ir  { background: #880e4f; color: #f48fb1; }
+    .reg-ac  { background: #311b92; color: #ce93d8; }
+  }
+</style>
+
+<div style="padding: 0.5rem 0">
+  <div style="margin-bottom: 14px;">
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 10px;">사이클을 선택하세요</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="tabs">
+      <button class="tab-btn active" onclick="show('fetch')">📥 인출 사이클</button>
+      <button class="tab-btn" onclick="show('indirect')">🔁 간접 사이클</button>
+      <button class="tab-btn" onclick="show('execute')">⚙️ 실행 사이클</button>
+      <button class="tab-btn" onclick="show('interrupt')">🚨 인터럽트 사이클</button>
+      <button class="tab-btn" onclick="show('types')">📦 연산 종류</button>
+    </div>
+  </div>
+
+  <div id="content"></div>
+</div>
+
+<script>
+const data = {
+  fetch: {
+    title: '인출 사이클 (Fetch Cycle)',
+    subtitle: '명령어를 메모리에서 CPU로 가져오는 단계',
+    steps: [
+      { op: 'MAR ← PC', desc: 'PC가 갖고 있는 주소를 MAR에 전달', color: '#FFF3E0', border: '#FB8C00' },
+      { op: 'MBR ← M[MAR],  PC ← PC + 1', desc: '메모리에서 명령어 읽기 + PC 1 증가', color: '#E8F5E9', border: '#43A047' },
+      { op: 'IR ← MBR', desc: '읽어온 명령어를 IR에 저장', color: '#FCE4EC', border: '#E53935' },
+    ],
+    memo: '🧠 암기법: "PC → MAR → 메모리 → MBR → IR"\n📌 마치 도서관에서 책번호(PC)로 서가위치(MAR)를 찾아 책(MBR)을 꺼내 읽는(IR) 것!',
+    hint: '💡 PC는 다음 명령어 주소를 가리킴. MBR 읽는 동시에 PC+1 되는 것 기억!'
+  },
+  indirect: {
+    title: '간접 사이클 (Indirect Cycle)',
+    subtitle: '간접 주소 지정 시, 실제 주소를 메모리에서 다시 읽어오는 단계',
+    steps: [
+      { op: 'MAR ← IR(addr)', desc: 'IR의 주소 필드를 MAR에 전달', color: '#FFF3E0', border: '#FB8C00' },
+      { op: 'MBR ← M[MAR]', desc: '그 주소가 가리키는 메모리 읽기 (유효 주소를 얻음)', color: '#E8F5E9', border: '#43A047' },
+      { op: 'IR(addr) ← MBR(addr)', desc: 'IR의 주소 부분을 실제(유효) 주소로 교체', color: '#FCE4EC', border: '#E53935' },
+    ],
+    memo: '🧠 암기법: "IR주소 → MAR → 메모리 → MBR → IR주소 갱신"\n📌 명함에 적힌 주소(IR)로 가니 "진짜 주소는 여기야"라는 쪽지(MBR)가 있는 것!',
+    hint: '💡 간접 사이클은 항상 인출 사이클 다음에 옴. 간접 주소 비트(I bit) = 1일 때만 수행!'
+  },
+  execute: {
+    title: '실행 사이클 (Execute Cycle) — ADD 예시',
+    subtitle: '명령어를 실제로 실행하는 단계 (명령어마다 다름)',
+    steps: [
+      { op: 'MAR ← IR(addr)', desc: 'IR의 주소(피연산자 주소)를 MAR에 전달', color: '#FFF3E0', border: '#FB8C00' },
+      { op: 'MBR ← M[MAR]', desc: '피연산자 데이터를 메모리에서 읽어옴', color: '#E8F5E9', border: '#43A047' },
+      { op: 'AC ← AC + MBR', desc: 'AC(누산기)와 MBR을 더해 AC에 저장', color: '#EDE7F6', border: '#7B1FA2' },
+    ],
+    memo: '🧠 명령어별 실행 사이클 패턴:\n• ADD/SUB → AC ← AC ± MBR\n• LOAD → AC ← MBR\n• STORE → M[MAR] ← AC\n• JUMP → PC ← IR(addr)',
+    hint: '💡 실행 사이클은 명령어 종류(opcode)에 따라 다르게 실행됨! 시험에서 opcode별로 외워야 함'
+  },
+  interrupt: {
+    title: '인터럽트 사이클 (Interrupt Cycle)',
+    subtitle: '인터럽트 발생 시 현재 상태를 저장하고 ISR로 분기하는 단계',
+    steps: [
+      { op: 'MBR ← PC', desc: '현재 PC 값(복귀 주소)을 MBR에 임시 저장', color: '#FFF3E0', border: '#FB8C00' },
+      { op: 'MAR ← SP,  PC ← ISR 주소', desc: '스택 포인터를 MAR에, PC는 인터럽트 서비스 루틴 주소로', color: '#E8F5E9', border: '#43A047' },
+      { op: 'M[MAR] ← MBR,  SP ← SP - 1', desc: '스택에 복귀주소 저장, SP 감소', color: '#FCE4EC', border: '#E53935' },
+    ],
+    memo: '🧠 암기법: "복귀주소 저장 → PC를 ISR로 점프 → 스택에 보관"\n📌 급한 전화(인터럽트) 오면 책갈피(PC 저장) 꽂고, 전화(ISR) 받으러 가는 것!',
+    hint: '💡 인터럽트 사이클 끝에 IEN(인터럽트 허용 플래그)를 0으로 리셋함 — 중복 인터럽트 방지'
+  },
+  types: {
+    title: '마이크로 오퍼레이션 4가지 종류',
+    subtitle: '레지스터 전송 / 산술 / 논리 / 시프트',
+    groups: [
+      {
+        label: '📋 레지스터 전송', color: '#E3F2FD', border: '#1565C0',
+        items: ['R2 ← R1', 'MAR ← PC', 'IR ← MBR'],
+        tip: '← 기호로 데이터 이동. 오른쪽 → 왼쪽으로 전송'
+      },
+      {
+        label: '➕ 산술 연산', color: '#FFF3E0', border: '#E65100',
+        items: ['AC ← AC + MBR', 'AC ← AC - MBR', 'AC ← AC + 1 (증가)'],
+        tip: '+, -, ×, ÷ 및 증감(+1, -1) 연산 포함'
+      },
+      {
+        label: '🔷 논리 연산', color: '#F3E5F5', border: '#6A1B9A',
+        items: ['A ← A ∧ B  (AND)', 'A ← A ∨ B  (OR)', 'A ← Ā  (NOT/보수)'],
+        tip: 'AND, OR, NOT, XOR — 비트 단위 연산'
+      },
+      {
+        label: '↔️ 시프트 연산', color: '#E8F5E9', border: '#1B5E20',
+        items: ['shl A  (왼쪽 시프트)', 'shr A  (오른쪽 시프트)', 'cil A  (순환 왼쪽 시프트)'],
+        tip: '왼쪽 시프트 = ×2, 오른쪽 시프트 = ÷2 효과'
+      }
+    ]
+  }
+};
+
+function show(key) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['fetch','indirect','execute','interrupt','types'][i] === key);
+  });
+  const d = data[key];
+  let html = `<div class="card">
+    <p style="font-size:15px;font-weight:500;margin:0 0 3px">${d.title}</p>
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 14px">${d.subtitle}</p>`;
+
+  if (d.steps) {
+    d.steps.forEach((s, i) => {
+      html += `<div class="step-row">
+        <div class="step-num" style="background:${s.border};color:#fff">${i+1}</div>
+        <div style="flex:1">
+          <div class="code-pill" style="display:inline-block;margin-bottom:3px">${s.op}</div>
+          <div style="font-size:12px;color:var(--color-text-secondary)">${s.desc}</div>
+        </div>
+      </div>`;
+      if (i < d.steps.length - 1) html += `<div class="arrow-down">↓</div>`;
+    });
+    html += `<div class="memo-box" style="white-space:pre-line">${d.memo}</div>`;
+    html += `<div class="hint-box">${d.hint}</div>`;
+  }
+
+  if (d.groups) {
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">`;
+    d.groups.forEach(g => {
+      html += `<div style="background:${g.color};border:0.5px solid ${g.border};border-radius:8px;padding:12px">
+        <div style="font-size:13px;font-weight:500;color:${g.border};margin-bottom:8px">${g.label}</div>`;
+      g.items.forEach(item => {
+        html += `<div style="font-family:var(--font-mono);font-size:12px;margin-bottom:4px;color:var(--color-text-primary)">${item}</div>`;
+      });
+      html += `<div style="font-size:11px;color:var(--color-text-secondary);margin-top:6px;border-top:0.5px solid ${g.border}33;padding-top:6px">${g.tip}</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+    html += `<div class="memo-box" style="margin-top:12px">🧠 암기법: <b>레산논시</b> (레지스터전송 → 산술 → 논리 → 시프트)<br>시험에서 4가지 종류 구분하는 문제 자주 출제!</div>`;
+  }
+
+  html += `</div>`;
+  document.getElementById('content').innerHTML = html;
+}
+
+show('fetch');
+</script>
