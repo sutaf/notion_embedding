@@ -1,18 +1,122 @@
-
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPC 대표 기법 6가지</title>
 <style>
+:root{
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f5f4ef;
+  --color-background-tertiary:#ebe9e2;
+  --color-background-info:#e6f1fb;
+  --color-background-success:#eaf3de;
+  --color-background-warning:#faeeda;
+  --color-text-primary:#1a1a19;
+  --color-text-secondary:#5f5e5a;
+  --color-text-tertiary:#888780;
+  --color-text-info:#185fa5;
+  --color-text-success:#3b6d11;
+  --color-text-warning:#854f0b;
+  --color-border-tertiary:rgba(0,0,0,0.08);
+  --color-border-secondary:rgba(0,0,0,0.18);
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  --font-mono:"SF Mono","Monaco","Consolas","D2Coding",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-background-primary:#1c1c1a;
+    --color-background-secondary:#26251f;
+    --color-background-tertiary:#2c2b26;
+    --color-background-info:#0c447c;
+    --color-background-success:#27500a;
+    --color-background-warning:#633806;
+    --color-text-primary:#e8e6df;
+    --color-text-secondary:#b4b2a9;
+    --color-text-tertiary:#888780;
+    --color-text-info:#b5d4f4;
+    --color-text-success:#c0dd97;
+    --color-text-warning:#fac775;
+    --color-border-tertiary:rgba(255,255,255,0.12);
+    --color-border-secondary:rgba(255,255,255,0.22);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-primary);line-height:1.5}
+body{max-width:720px;margin:0 auto;padding:20px 16px}
+h1{font-size:20px;font-weight:500;margin:0 0 16px;padding-bottom:12px;border-bottom:0.5px solid var(--color-border-tertiary)}
+button{font-family:inherit;font-size:13px;padding:7px 14px;background:transparent;color:var(--color-text-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;transition:all .15s}
+button:hover:not(:disabled){background:var(--color-background-secondary)}
+button:active:not(:disabled){transform:scale(0.98)}
+button:disabled{opacity:0.4;cursor:not-allowed}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+/* SVG pre-built classes */
+.th{font-family:var(--font-sans);font-size:14px;font-weight:500;fill:var(--color-text-primary)}
+.ts{font-family:var(--font-sans);font-size:12px;font-weight:400;fill:var(--color-text-secondary)}
+.arr{stroke:var(--color-text-secondary);stroke-width:1.5;fill:none}
+
+/* Color ramp classes */
+.c-blue > rect, .c-blue > circle, .c-blue > ellipse, rect.c-blue, circle.c-blue{fill:#e6f1fb;stroke:#185fa5}
+.c-blue > .th, .c-blue .th{fill:#0c447c}
+.c-blue > .ts, .c-blue .ts{fill:#185fa5}
+
+.c-teal > rect, .c-teal > circle, .c-teal > ellipse, rect.c-teal, circle.c-teal{fill:#e1f5ee;stroke:#0f6e56}
+.c-teal > .th, .c-teal .th{fill:#085041}
+.c-teal > .ts, .c-teal .ts{fill:#0f6e56}
+
+.c-coral > rect, .c-coral > circle, .c-coral > ellipse, rect.c-coral, circle.c-coral{fill:#faece7;stroke:#993c1d}
+.c-coral > .th, .c-coral .th{fill:#712b13}
+.c-coral > .ts, .c-coral .ts{fill:#993c1d}
+
+.c-amber > rect, .c-amber > circle, .c-amber > ellipse, rect.c-amber, circle.c-amber{fill:#faeeda;stroke:#854f0b}
+.c-amber > .th, .c-amber .th{fill:#633806}
+.c-amber > .ts, .c-amber .ts{fill:#854f0b}
+
+.c-purple > rect, .c-purple > circle, .c-purple > ellipse, rect.c-purple, circle.c-purple{fill:#eeedfe;stroke:#534ab7}
+.c-purple > .th, .c-purple .th{fill:#3c3489}
+.c-purple > .ts, .c-purple .ts{fill:#534ab7}
+
+.c-gray > rect, .c-gray > circle, .c-gray > ellipse, rect.c-gray, circle.c-gray{fill:#f1efe8;stroke:#5f5e5a}
+.c-gray > .th, .c-gray .th{fill:#444441}
+.c-gray > .ts, .c-gray .ts{fill:#5f5e5a}
+
+@media (prefers-color-scheme: dark){
+  .c-blue > rect, .c-blue > circle, .c-blue > ellipse, rect.c-blue, circle.c-blue{fill:#0c447c;stroke:#85b7eb}
+  .c-blue > .th, .c-blue .th{fill:#b5d4f4}
+  .c-blue > .ts, .c-blue .ts{fill:#85b7eb}
+  .c-teal > rect, .c-teal > circle, .c-teal > ellipse, rect.c-teal, circle.c-teal{fill:#085041;stroke:#5dcaa5}
+  .c-teal > .th, .c-teal .th{fill:#9fe1cb}
+  .c-teal > .ts, .c-teal .ts{fill:#5dcaa5}
+  .c-coral > rect, .c-coral > circle, .c-coral > ellipse, rect.c-coral, circle.c-coral{fill:#712b13;stroke:#f0997b}
+  .c-coral > .th, .c-coral .th{fill:#f5c4b3}
+  .c-coral > .ts, .c-coral .ts{fill:#f0997b}
+  .c-amber > rect, .c-amber > circle, .c-amber > ellipse, rect.c-amber, circle.c-amber{fill:#633806;stroke:#ef9f27}
+  .c-amber > .th, .c-amber .th{fill:#fac775}
+  .c-amber > .ts, .c-amber .ts{fill:#ef9f27}
+  .c-purple > rect, .c-purple > circle, .c-purple > ellipse, rect.c-purple, circle.c-purple{fill:#3c3489;stroke:#afa9ec}
+  .c-purple > .th, .c-purple .th{fill:#cecbf6}
+  .c-purple > .ts, .c-purple .ts{fill:#afa9ec}
+  .c-gray > rect, .c-gray > circle, .c-gray > ellipse, rect.c-gray, circle.c-gray{fill:#444441;stroke:#b4b2a9}
+  .c-gray > .th, .c-gray .th{fill:#d3d1c7}
+  .c-gray > .ts, .c-gray .ts{fill:#b4b2a9}
+}
+
+/* Stepper UI */
 .illus-wrap{background:var(--color-background-secondary);border-radius:12px;padding:16px;margin:10px 0;min-height:200px;display:flex;align-items:center;justify-content:center}
 .illus-wrap svg{max-width:100%;height:auto}
 .desc{margin:10px 0 6px}
 .dtitle{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px}
 .dtitle .en{font-size:13px;color:var(--color-text-tertiary);margin-left:8px;font-weight:400}
-.dbody{font-size:13px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:10px}
+.dbody{font-size:13px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:10px;white-space:pre-line}
 .pc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .pc-card{padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5}
 .pc-card.p{background:var(--color-background-success);color:var(--color-text-success)}
 .pc-card.c{background:var(--color-background-warning);color:var(--color-text-warning)}
 .pc-card .lbl{font-weight:500;margin-bottom:3px;font-size:11px;letter-spacing:.02em}
-.ex{font-family:var(--font-mono);font-size:12px;background:var(--color-background-tertiary);border-radius:8px;padding:8px 12px;margin-top:8px;color:var(--color-text-secondary)}
+.ex{font-family:var(--font-mono);font-size:12px;background:var(--color-background-tertiary);border-radius:8px;padding:8px 12px;margin-top:8px;color:var(--color-text-secondary);overflow-x:auto}
 .nav{display:flex;align-items:center;gap:10px;margin-top:10px}
 .dots{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--color-border-secondary);cursor:pointer;transition:all .15s}
@@ -20,6 +124,10 @@
 .dot.past{background:var(--color-text-success)}
 .step-label{font-size:12px;color:var(--color-text-tertiary);text-align:center;margin-bottom:2px}
 </style>
+</head>
+<body>
+
+<h1>IPC 대표 기법 6가지</h1>
 
 <h2 class="sr-only">IPC(프로세스 간 통신) 대표 기법 6가지 인터랙티브 설명</h2>
 
@@ -172,3 +280,6 @@ function go(d){cur=Math.max(0,Math.min(M.length-1,cur+d));render();}
 function jump(n){cur=n;render();}
 render();
 </script>
+
+</body>
+</html>
