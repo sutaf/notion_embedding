@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNS 동작 과정</title>
+<style>
+:root{
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f5f4ef;
+  --color-background-tertiary:#ebe9e2;
+  --color-background-info:#e6f1fb;
+  --color-background-success:#eaf3de;
+  --color-background-warning:#faeeda;
+  --color-text-primary:#1a1a19;
+  --color-text-secondary:#5f5e5a;
+  --color-text-tertiary:#888780;
+  --color-text-info:#185fa5;
+  --color-text-success:#3b6d11;
+  --color-text-warning:#854f0b;
+  --color-border-tertiary:rgba(0,0,0,0.08);
+  --color-border-secondary:rgba(0,0,0,0.18);
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  --font-mono:"SF Mono","Monaco","Consolas","D2Coding",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-background-primary:#1c1c1a;
+    --color-background-secondary:#26251f;
+    --color-background-tertiary:#2c2b26;
+    --color-background-info:#0c447c;
+    --color-background-success:#27500a;
+    --color-background-warning:#633806;
+    --color-text-primary:#e8e6df;
+    --color-text-secondary:#b4b2a9;
+    --color-text-tertiary:#888780;
+    --color-text-info:#b5d4f4;
+    --color-text-success:#c0dd97;
+    --color-text-warning:#fac775;
+    --color-border-tertiary:rgba(255,255,255,0.12);
+    --color-border-secondary:rgba(255,255,255,0.22);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-primary);line-height:1.5}
+body{max-width:720px;margin:0 auto;padding:20px 16px}
+h1{font-size:20px;font-weight:500;margin:0 0 16px;padding-bottom:12px;border-bottom:0.5px solid var(--color-border-tertiary)}
+button{font-family:inherit;font-size:13px;padding:7px 14px;background:transparent;color:var(--color-text-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;transition:all .15s}
+button:hover:not(:disabled){background:var(--color-background-secondary)}
+button:active:not(:disabled){transform:scale(0.98)}
+button:disabled{opacity:0.4;cursor:not-allowed}
+
+.th{font-family:var(--font-sans);font-size:14px;font-weight:500;fill:var(--color-text-primary)}
+.ts{font-family:var(--font-sans);font-size:12px;font-weight:400;fill:var(--color-text-secondary)}
+
+.c-blue > rect, rect.c-blue{fill:#e6f1fb;stroke:#185fa5}
+.c-blue > .th, .c-blue .th{fill:#0c447c}
+.c-blue > .ts, .c-blue .ts{fill:#185fa5}
+.c-teal > rect, rect.c-teal{fill:#e1f5ee;stroke:#0f6e56}
+.c-teal > .th, .c-teal .th{fill:#085041}
+.c-teal > .ts, .c-teal .ts{fill:#0f6e56}
+.c-coral > rect, rect.c-coral{fill:#faece7;stroke:#993c1d}
+.c-coral > .th, .c-coral .th{fill:#712b13}
+.c-coral > .ts, .c-coral .ts{fill:#993c1d}
+.c-amber > rect, rect.c-amber{fill:#faeeda;stroke:#854f0b}
+.c-amber > .th, .c-amber .th{fill:#633806}
+.c-amber > .ts, .c-amber .ts{fill:#854f0b}
+.c-purple > rect, rect.c-purple{fill:#eeedfe;stroke:#534ab7}
+.c-purple > .th, .c-purple .th{fill:#3c3489}
+.c-purple > .ts, .c-purple .ts{fill:#534ab7}
+.c-gray > rect, rect.c-gray{fill:#f1efe8;stroke:#5f5e5a}
+.c-gray > .th, .c-gray .th{fill:#444441}
+.c-gray > .ts, .c-gray .ts{fill:#5f5e5a}
+
+@media (prefers-color-scheme: dark){
+  .c-blue > rect, rect.c-blue{fill:#0c447c;stroke:#85b7eb}
+  .c-blue > .th, .c-blue .th{fill:#b5d4f4}
+  .c-blue > .ts, .c-blue .ts{fill:#85b7eb}
+  .c-teal > rect, rect.c-teal{fill:#085041;stroke:#5dcaa5}
+  .c-teal > .th, .c-teal .th{fill:#9fe1cb}
+  .c-teal > .ts, .c-teal .ts{fill:#5dcaa5}
+  .c-coral > rect, rect.c-coral{fill:#712b13;stroke:#f0997b}
+  .c-coral > .th, .c-coral .th{fill:#f5c4b3}
+  .c-coral > .ts, .c-coral .ts{fill:#f0997b}
+  .c-amber > rect, rect.c-amber{fill:#633806;stroke:#ef9f27}
+  .c-amber > .th, .c-amber .th{fill:#fac775}
+  .c-amber > .ts, .c-amber .ts{fill:#ef9f27}
+  .c-purple > rect, rect.c-purple{fill:#3c3489;stroke:#afa9ec}
+  .c-purple > .th, .c-purple .th{fill:#cecbf6}
+  .c-purple > .ts, .c-purple .ts{fill:#afa9ec}
+  .c-gray > rect, rect.c-gray{fill:#444441;stroke:#b4b2a9}
+  .c-gray > .th, .c-gray .th{fill:#d3d1c7}
+  .c-gray > .ts, .c-gray .ts{fill:#b4b2a9}
+}
+
+.illus-wrap{background:var(--color-background-secondary);border-radius:12px;padding:16px;margin:10px 0;min-height:320px;display:flex;align-items:center;justify-content:center}
+.illus-wrap svg{max-width:100%;height:auto;width:100%}
+.desc{margin:10px 0 6px}
+.dtitle{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px}
+.dbody{font-size:13px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:10px;white-space:pre-line}
+.ex{font-family:var(--font-mono);font-size:12px;background:var(--color-background-tertiary);border-radius:8px;padding:10px 14px;margin-top:8px;color:var(--color-text-secondary);overflow-x:auto}
+.nav{display:flex;align-items:center;gap:10px;margin-top:10px}
+.dots{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--color-border-secondary);cursor:pointer;transition:all .15s}
+.dot.cur{background:var(--color-text-info);transform:scale(1.25)}
+.dot.past{background:var(--color-text-success)}
+.step-label{font-size:12px;color:var(--color-text-tertiary);text-align:center;margin-bottom:2px}
+.summary{margin-top:20px;padding:16px;background:var(--color-background-secondary);border-radius:12px}
+.summary h3{font-size:14px;font-weight:500;margin:0 0 10px}
+.summary ol{margin:0;padding-left:20px;font-size:13px;color:var(--color-text-secondary);line-height:1.8}
+.active-step rect{stroke-width:1.5 !important}
+.pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+</style>
+</head>
+<body>
+
+<h1>DNS 동작 과정 — naver.com을 IP로 바꾸기까지</h1>
+
+<div class="step-label" id="steplabel"></div>
+<div class="illus-wrap">
+  <svg id="svg" viewBox="0 0 680 380" role="img">
+    <title>DNS 질의 과정 다이어그램</title>
+    <desc>사용자 PC부터 Root/TLD/Authoritative DNS까지의 질의 흐름</desc>
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+    </defs>
+
+    <g class="c-blue" id="n-user">
+      <rect x="20" y="160" width="120" height="60" rx="8" stroke-width="0.5"/>
+      <text class="th" x="80" y="185" text-anchor="middle" dominant-baseline="central">사용자 PC</text>
+      <text class="ts" x="80" y="203" text-anchor="middle" dominant-baseline="central">브라우저</text>
+    </g>
+
+    <g class="c-teal" id="n-local">
+      <rect x="200" y="160" width="140" height="60" rx="8" stroke-width="0.5"/>
+      <text class="th" x="270" y="183" text-anchor="middle" dominant-baseline="central">Local DNS</text>
+      <text class="ts" x="270" y="201" text-anchor="middle" dominant-baseline="central">(ISP/공유기)</text>
+    </g>
+
+    <g class="c-purple" id="n-root">
+      <rect x="420" y="20" width="160" height="60" rx="8" stroke-width="0.5"/>
+      <text class="th" x="500" y="43" text-anchor="middle" dominant-baseline="central">Root DNS</text>
+      <text class="ts" x="500" y="61" text-anchor="middle" dominant-baseline="central">"."</text>
+    </g>
+
+    <g class="c-amber" id="n-tld">
+      <rect x="420" y="160" width="160" height="60" rx="8" stroke-width="0.5"/>
+      <text class="th" x="500" y="183" text-anchor="middle" dominant-baseline="central">TLD DNS</text>
+      <text class="ts" x="500" y="201" text-anchor="middle" dominant-baseline="central">".com"</text>
+    </g>
+
+    <g class="c-coral" id="n-auth">
+      <rect x="420" y="300" width="160" height="60" rx="8" stroke-width="0.5"/>
+      <text class="th" x="500" y="323" text-anchor="middle" dominant-baseline="central">Authoritative</text>
+      <text class="ts" x="500" y="341" text-anchor="middle" dominant-baseline="central">naver.com</text>
+    </g>
+
+    <g id="arrows"></g>
+  </svg>
+</div>
+
+<div class="desc">
+  <div class="dtitle" id="dtitle"></div>
+  <div class="dbody" id="dbody"></div>
+  <div class="ex" id="dex"></div>
+</div>
+
+<div class="nav">
+  <button id="bp" onclick="go(-1)">← 이전</button>
+  <div class="dots" id="dots"></div>
+  <button id="bn" onclick="go(1)">다음 →</button>
+</div>
+
+<div class="summary">
+  <h3>🎯 핵심 요약</h3>
+  <ol>
+    <li><b>재귀적 질의(Recursive Query)</b>: 사용자 PC → Local DNS 까지는 "답을 찾아서 완성해서 줘" 라고 위임</li>
+    <li><b>반복적 질의(Iterative Query)</b>: Local DNS → Root/TLD/Authoritative 까지는 한 단계씩 직접 물어봄</li>
+    <li><b>계층 구조</b>: Root(최상위) → TLD(.com, .kr 등) → Authoritative(실제 도메인 관리)</li>
+    <li><b>캐싱(Caching)</b>: 한번 조회한 결과는 TTL 시간 동안 Local DNS에 저장돼서, 같은 요청은 1번만에 끝남</li>
+  </ol>
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: '① 사용자 요청 — "naver.com의 IP 주소 알려줘"',
+    body: '브라우저에 naver.com을 입력하면, PC는 가장 먼저 자기 캐시와 hosts 파일을 확인해요.\n없으면 Local DNS 서버에게 "naver.com의 IP 뭐야?"라고 질의합니다.\n이때 PC → Local DNS는 재귀적 질의(Recursive Query) 방식입니다.',
+    ex: '사용자 PC → Local DNS: "naver.com의 A 레코드 주세요"',
+    arrows: [{from:'user', to:'local', label:'① 질의', color:'#185FA5', dir:'→'}],
+    highlight: ['n-user', 'n-local']
+  },
+  {
+    title: '② Local DNS 캐시 확인 — "내가 알고 있나?"',
+    body: 'Local DNS 서버는 먼저 자기 캐시를 확인합니다.\n이전에 누군가 조회했고 TTL(Time To Live)이 남아있다면 바로 응답해요. 이 경우 ③~⑦ 단계를 모두 생략합니다.\n없다면 Root DNS에게 물어보러 출발합니다.',
+    ex: '# dig naver.com +trace\n; 캐시에 있으면 → 즉시 응답 (수 밀리초)\n; 캐시에 없으면 → 계층 질의 시작',
+    arrows: [],
+    highlight: ['n-local']
+  },
+  {
+    title: '③ Root DNS에 질의 — ".com 담당자가 누구야?"',
+    body: 'Local DNS가 Root DNS에게 "naver.com 알려줘"라고 물어요.\nRoot는 실제 IP는 모르지만, ".com을 담당하는 TLD 서버 주소"를 알려줍니다.\n전 세계에 13개의 Root 서버(A~M)가 있어요.',
+    ex: 'Local DNS → Root: "naver.com?"\nRoot → Local DNS: "나는 몰라. .com 담당 TLD 서버에게 물어봐"',
+    arrows: [
+      {from:'local', to:'root', label:'② 질의', color:'#534AB7', dir:'→'},
+      {from:'root', to:'local', label:'③ TLD 주소', color:'#534AB7', dir:'→', offset:true}
+    ],
+    highlight: ['n-local', 'n-root']
+  },
+  {
+    title: '④ TLD DNS에 질의 — "naver.com 담당자 누구야?"',
+    body: 'Local DNS가 TLD DNS(.com 서버)에게 물어봐요.\nTLD도 실제 IP는 모르지만, "naver.com을 실제로 관리하는 Authoritative DNS 주소"를 알려줍니다.\n.com, .net, .kr 같은 최상위 도메인마다 TLD 서버가 따로 있어요.',
+    ex: 'Local DNS → TLD: "naver.com?"\nTLD → Local DNS: "naver.com의 Authoritative 서버는 ns1.naver.com이야"',
+    arrows: [
+      {from:'local', to:'tld', label:'④ 질의', color:'#854F0B', dir:'→'},
+      {from:'tld', to:'local', label:'⑤ Auth 주소', color:'#854F0B', dir:'→', offset:true}
+    ],
+    highlight: ['n-local', 'n-tld']
+  },
+  {
+    title: '⑤ Authoritative DNS에 질의 — "진짜 IP 알려줘"',
+    body: 'Local DNS가 드디어 naver.com을 실제로 관리하는 Authoritative DNS에게 물어봐요.\n이 서버는 naver.com의 진짜 IP 주소를 가지고 있어서 정확한 답을 돌려줍니다.\n여기서 응답을 받으면 DNS 조회가 완료돼요!',
+    ex: 'Local DNS → Authoritative: "naver.com의 IP?"\nAuthoritative → Local DNS: "223.130.200.104 이야"',
+    arrows: [
+      {from:'local', to:'auth', label:'⑥ 질의', color:'#993C1D', dir:'→'},
+      {from:'auth', to:'local', label:'⑦ IP 주소', color:'#993C1D', dir:'→', offset:true}
+    ],
+    highlight: ['n-local', 'n-auth']
+  },
+  {
+    title: '⑥ 응답 전달 및 캐싱',
+    body: 'Local DNS가 사용자 PC에게 최종 IP 주소를 전달해요.\n동시에 TTL 기간 동안 자기 캐시에 저장합니다. 다음에 누가 같은 naver.com을 물어보면 2단계에서 바로 응답!\n사용자 PC도 브라우저/OS 캐시에 저장해서 성능을 높여요.',
+    ex: 'Local DNS → 사용자 PC: "naver.com = 223.130.200.104"\n[캐시 저장: TTL 300초]\n\n브라우저는 받은 IP로 HTTP 요청 시작 → 네이버 접속 완료!',
+    arrows: [{from:'local', to:'user', label:'⑧ 최종 응답', color:'#1D9E75', dir:'→'}],
+    highlight: ['n-user', 'n-local']
+  }
+];
+
+const positions = {
+  user:  {x:80,  y:190, rx:60, ry:30},
+  local: {x:270, y:190, rx:70, ry:30},
+  root:  {x:500, y:50,  rx:80, ry:30},
+  tld:   {x:500, y:190, rx:80, ry:30},
+  auth:  {x:500, y:330, rx:80, ry:30}
+};
+
+function drawArrow(from, to, label, color, offset){
+  const p1 = positions[from];
+  const p2 = positions[to];
+  let x1, y1, x2, y2;
+
+  if(from === 'user' && to === 'local'){
+    x1 = p1.x + p1.rx; y1 = offset ? p1.y + 8 : p1.y - 8;
+    x2 = p2.x - p2.rx; y2 = offset ? p2.y + 8 : p2.y - 8;
+  } else if(from === 'local' && to === 'user'){
+    x1 = p1.x - p1.rx; y1 = p1.y + 8;
+    x2 = p2.x + p2.rx; y2 = p2.y + 8;
+  } else if(from === 'local' && to === 'root'){
+    x1 = p1.x + 30; y1 = p1.y - p1.ry;
+    x2 = p2.x - 30; y2 = p2.y + p2.ry;
+  } else if(from === 'root' && to === 'local'){
+    x1 = p1.x + 30; y1 = p1.y + p1.ry;
+    x2 = p2.x + 30; y2 = p2.y - p2.ry;
+  } else if(from === 'local' && to === 'tld'){
+    x1 = p1.x + p1.rx; y1 = p1.y - 8;
+    x2 = p2.x - p2.rx; y2 = p2.y - 8;
+  } else if(from === 'tld' && to === 'local'){
+    x1 = p1.x - p1.rx; y1 = p1.y + 8;
+    x2 = p2.x + p2.rx; y2 = p2.y + 8;
+  } else if(from === 'local' && to === 'auth'){
+    x1 = p1.x + 30; y1 = p1.y + p1.ry;
+    x2 = p2.x - 30; y2 = p2.y - p2.ry;
+  } else if(from === 'auth' && to === 'local'){
+    x1 = p1.x - 30; y1 = p1.y - p1.ry;
+    x2 = p2.x + 30; y2 = p2.y + p2.ry;
+  }
+
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+
+  return `
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1.8" marker-end="url(#arr)" class="pulse"/>
+    <rect x="${midX-28}" y="${midY-10}" width="56" height="18" rx="4" fill="var(--color-background-primary)" stroke="${color}" stroke-width="0.5"/>
+    <text class="ts" x="${midX}" y="${midY-1}" text-anchor="middle" dominant-baseline="central" style="fill:${color};font-weight:500">${label}</text>
+  `;
+}
+
+let cur = 0;
+
+function render(){
+  const s = STEPS[cur];
+  document.getElementById('steplabel').textContent = `${cur+1} / ${STEPS.length}`;
+  document.getElementById('dtitle').textContent = s.title;
+  document.getElementById('dbody').textContent = s.body;
+  document.getElementById('dex').textContent = s.ex;
+
+  const arrowsHtml = s.arrows.map(a => drawArrow(a.from, a.to, a.label, a.color, a.offset)).join('');
+  document.getElementById('arrows').innerHTML = arrowsHtml;
+
+  ['n-user','n-local','n-root','n-tld','n-auth'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('active-step', s.highlight.includes(id));
+  });
+
+  document.getElementById('dots').innerHTML = STEPS.map((_,i) =>
+    `<div class="dot${i===cur?' cur':i<cur?' past':''}" onclick="jump(${i})"></div>`
+  ).join('');
+  document.getElementById('bp').disabled = cur === 0;
+  document.getElementById('bn').disabled = cur === STEPS.length-1;
+}
+function go(d){cur = Math.max(0, Math.min(STEPS.length-1, cur+d)); render();}
+function jump(n){cur = n; render();}
+render();
+</script>
+
+</body>
+</html>
