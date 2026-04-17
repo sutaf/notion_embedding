@@ -1,0 +1,174 @@
+
+<style>
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.illus-wrap{background:var(--color-background-secondary);border-radius:12px;padding:16px;margin:10px 0;min-height:200px;display:flex;align-items:center;justify-content:center}
+.illus-wrap svg{max-width:100%;height:auto}
+.desc{margin:10px 0 6px}
+.dtitle{font-size:16px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px}
+.dtitle .en{font-size:13px;color:var(--color-text-tertiary);margin-left:8px;font-weight:400}
+.dbody{font-size:13px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:10px}
+.pc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.pc-card{padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5}
+.pc-card.p{background:var(--color-background-success);color:var(--color-text-success)}
+.pc-card.c{background:var(--color-background-warning);color:var(--color-text-warning)}
+.pc-card .lbl{font-weight:500;margin-bottom:3px;font-size:11px;letter-spacing:.02em}
+.ex{font-family:var(--font-mono);font-size:12px;background:var(--color-background-tertiary);border-radius:8px;padding:8px 12px;margin-top:8px;color:var(--color-text-secondary)}
+.nav{display:flex;align-items:center;gap:10px;margin-top:10px}
+.dots{display:flex;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--color-border-secondary);cursor:pointer;transition:all .15s}
+.dot.cur{background:var(--color-text-info);transform:scale(1.25)}
+.dot.past{background:var(--color-text-success)}
+.step-label{font-size:12px;color:var(--color-text-tertiary);text-align:center;margin-bottom:2px}
+</style>
+
+<h2 class="sr-only">IPC(프로세스 간 통신) 대표 기법 6가지 인터랙티브 설명</h2>
+
+<div class="step-label" id="steplabel"></div>
+<div class="illus-wrap" id="illus"></div>
+<div class="desc">
+  <div class="dtitle" id="dtitle"></div>
+  <div class="dbody" id="dbody"></div>
+  <div class="pc-row">
+    <div class="pc-card p"><div class="lbl">장점</div><div id="dpros"></div></div>
+    <div class="pc-card c"><div class="lbl">단점</div><div id="dcons"></div></div>
+  </div>
+  <div class="ex" id="dex"></div>
+</div>
+
+<div class="nav">
+  <button id="bp" onclick="go(-1)">← 이전</button>
+  <div class="dots" id="dots"></div>
+  <button id="bn" onclick="go(1)">다음 →</button>
+</div>
+
+<script>
+const defs = `<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
+
+const pbox = (x,y,w,h,label,sub,color) => `
+  <g class="c-${color}">
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" stroke-width="0.5"/>
+    <text class="th" x="${x+w/2}" y="${y+h/2-6}" text-anchor="middle" dominant-baseline="central">${label}</text>
+    ${sub?`<text class="ts" x="${x+w/2}" y="${y+h/2+10}" text-anchor="middle" dominant-baseline="central">${sub}</text>`:''}
+  </g>`;
+
+const M = [
+  {
+    name:'파이프', en:'Pipe (익명 파이프)',
+    desc:'부모-자식 프로세스 간의 단방향 통신 통로예요. 한쪽은 쓰기 전용, 다른쪽은 읽기 전용. 셸의 | 연산자가 바로 이 파이프를 사용합니다.',
+    pros:'구현 간단 · 빠름 · 커널이 자동 관리',
+    cons:'단방향만 가능 · 부모-자식 같은 관련 프로세스 사이에서만 사용',
+    ex:'$ ps aux | grep nginx    ← 파이프의 대표 예시',
+    svg:`${defs}
+      ${pbox(50,60,180,80,'부모 프로세스','쓰기 (write)','teal')}
+      ${pbox(450,60,180,80,'자식 프로세스','읽기 (read)','blue')}
+      <rect x="240" y="80" width="200" height="40" rx="20" fill="none" stroke="var(--color-text-secondary)" stroke-width="0.8" stroke-dasharray="3,2"/>
+      <text class="ts" x="340" y="104" text-anchor="middle" dominant-baseline="central">pipe (버퍼)</text>
+      <line x1="230" y1="100" x2="448" y2="100" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text class="ts" x="340" y="160" text-anchor="middle">데이터 흐름: 한쪽 방향만 ►</text>`
+  },
+  {
+    name:'명명 파이프', en:'Named Pipe / FIFO',
+    desc:'파일시스템에 이름을 가진 특수 파일 형태의 파이프예요. 부모-자식 관계가 아닌 완전히 남남인 프로세스끼리도 통신 가능. 이름을 알면 누구든 열 수 있어요.',
+    pros:'관련 없는 프로세스끼리도 통신 · 양방향 가능',
+    cons:'여전히 같은 호스트 내부 · 파일 경로 관리 필요',
+    ex:'$ mkfifo /tmp/myfifo    ← FIFO 파일 생성',
+    svg:`${defs}
+      ${pbox(40,60,160,80,'프로세스 A','(독립)','teal')}
+      ${pbox(480,60,160,80,'프로세스 B','(독립)','blue')}
+      <rect x="230" y="70" width="220" height="60" rx="6" fill="none" stroke="var(--color-text-secondary)" stroke-width="0.8"/>
+      <text class="th" x="340" y="92" text-anchor="middle" dominant-baseline="central">/tmp/myfifo</text>
+      <text class="ts" x="340" y="112" text-anchor="middle" dominant-baseline="central">파일시스템 상의 FIFO</text>
+      <line x1="200" y1="90" x2="228" y2="90" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="452" y1="110" x2="480" y2="110" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="480" y1="90" x2="452" y2="90" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="228" y1="110" x2="200" y2="110" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text class="ts" x="340" y="170" text-anchor="middle">양방향 통신 가능</text>`
+  },
+  {
+    name:'메시지 큐', en:'Message Queue',
+    desc:'커널이 관리하는 큐(Queue)에 "메시지"를 넣고 빼는 방식. 메시지마다 타입을 붙일 수 있고, 수신자는 원하는 타입만 골라 받을 수 있어요. 구조화된 데이터 전달에 유리.',
+    pros:'메시지 타입별 선택 수신 · 비동기 가능',
+    cons:'메시지 크기 제한 · 커널이 관리하므로 오버헤드 있음',
+    ex:'msgsnd(qid, &msg, size, 0);  msgrcv(qid, ...);',
+    svg:`${defs}
+      ${pbox(30,70,140,60,'송신자','sender','teal')}
+      ${pbox(510,70,140,60,'수신자','receiver','blue')}
+      <rect x="200" y="60" width="290" height="80" rx="8" fill="none" stroke="var(--color-text-secondary)" stroke-width="0.5" stroke-dasharray="3,2"/>
+      <text class="ts" x="345" y="76" text-anchor="middle" dominant-baseline="central">Message Queue (커널)</text>
+      <g class="c-amber"><rect x="215" y="90" width="60" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="245" y="110" text-anchor="middle" dominant-baseline="central">msg 1</text></g>
+      <g class="c-amber"><rect x="285" y="90" width="60" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="315" y="110" text-anchor="middle" dominant-baseline="central">msg 2</text></g>
+      <g class="c-amber"><rect x="355" y="90" width="60" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="385" y="110" text-anchor="middle" dominant-baseline="central">msg 3</text></g>
+      <g class="c-amber"><rect x="425" y="90" width="60" height="36" rx="6" stroke-width="0.5"/><text class="ts" x="455" y="110" text-anchor="middle" dominant-baseline="central">msg 4</text></g>
+      <line x1="170" y1="100" x2="213" y2="100" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="487" y1="100" x2="508" y2="100" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text class="ts" x="340" y="165" text-anchor="middle">FIFO 순서로 저장, 수신자가 선택적으로 꺼냄</text>`
+  },
+  {
+    name:'공유 메모리', en:'Shared Memory',
+    desc:'여러 프로세스가 동일한 메모리 영역을 공유해요. 커널을 거치지 않고 직접 읽고 쓰기 때문에 IPC 중 가장 빠릅니다. 단, 동시 접근 문제 때문에 세마포어 같은 동기화가 반드시 필요해요.',
+    pros:'가장 빠름 · 대용량 데이터 전송에 유리',
+    cons:'동기화 직접 처리 필요 · Race Condition 위험',
+    ex:'shmget() → shmat() → 공유 영역 읽기/쓰기',
+    svg:`${defs}
+      ${pbox(30,50,150,70,'프로세스 A','','teal')}
+      ${pbox(500,50,150,70,'프로세스 B','','blue')}
+      <g class="c-coral"><rect x="220" y="90" width="240" height="70" rx="10" stroke-width="0.5"/><text class="th" x="340" y="116" text-anchor="middle" dominant-baseline="central">공유 메모리 영역</text><text class="ts" x="340" y="136" text-anchor="middle" dominant-baseline="central">(Shared Region)</text></g>
+      <line x1="105" y1="120" x2="218" y2="120" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="218" y1="130" x2="105" y2="130" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="575" y1="120" x2="462" y2="120" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="462" y1="130" x2="575" y2="130" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text class="ts" x="340" y="185" text-anchor="middle">양쪽에서 직접 read/write — 커널 거치지 않음</text>`
+  },
+  {
+    name:'세마포어', en:'Semaphore',
+    desc:'데이터 전송이 아니라 "동기화" 도구예요. 공유 자원에 동시에 여러 프로세스가 접근하지 못하도록 보호합니다. P(대기) / V(신호) 연산으로 잠금을 관리해요.',
+    pros:'경쟁 상태 방지 · 자원 개수 제어 가능',
+    cons:'데이터 전송 아님 · 잘못 쓰면 데드락 발생',
+    ex:'P(S): 대기 ↓    V(S): 해제 ↑',
+    svg:`${defs}
+      ${pbox(30,30,150,60,'프로세스 A','','teal')}
+      ${pbox(30,120,150,60,'프로세스 B','','teal')}
+      <g class="c-amber"><rect x="260" y="65" width="160" height="80" rx="10" stroke-width="0.5"/><text class="th" x="340" y="95" text-anchor="middle" dominant-baseline="central">세마포어</text><text class="ts" x="340" y="115" text-anchor="middle" dominant-baseline="central">S = 1 (상호 배제)</text></g>
+      <g class="c-coral"><rect x="500" y="65" width="140" height="80" rx="10" stroke-width="0.5"/><text class="th" x="570" y="95" text-anchor="middle" dominant-baseline="central">공유 자원</text><text class="ts" x="570" y="115" text-anchor="middle" dominant-baseline="central">(Critical Section)</text></g>
+      <line x1="180" y1="60" x2="258" y2="85" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="180" y1="150" x2="258" y2="125" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="420" y1="105" x2="498" y2="105" stroke="#BA7517" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text class="ts" x="220" y="200" text-anchor="start">※ 한 번에 한 프로세스만 자원 접근 허용</text>`
+  },
+  {
+    name:'소켓', en:'Socket',
+    desc:'네트워크 기반 IPC예요. 같은 컴퓨터 안은 물론 서로 다른 컴퓨터 간에도 통신 가능한 유일한 방법. TCP는 신뢰성 보장, UDP는 빠른 비연결 통신.',
+    pros:'네트워크 통신 가능 · 표준화 · 어떤 언어·OS든 지원',
+    cons:'상대적으로 느림 · 연결 관리 직접 필요',
+    ex:'socket() → bind() → listen() → accept() / connect()',
+    svg:`${defs}
+      ${pbox(20,60,170,80,'프로세스 A','(Host 1)','teal')}
+      ${pbox(490,60,170,80,'프로세스 B','(Host 2)','blue')}
+      <g class="c-purple"><rect x="220" y="75" width="240" height="50" rx="25" stroke-width="0.5"/><text class="th" x="340" y="93" text-anchor="middle" dominant-baseline="central">네트워크 (TCP / UDP)</text><text class="ts" x="340" y="111" text-anchor="middle" dominant-baseline="central">IP + 포트 기반</text></g>
+      <line x1="190" y1="95" x2="218" y2="95" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="218" y1="105" x2="190" y2="105" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="488" y1="95" x2="462" y2="95" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arr)"/>
+      <line x1="462" y1="105" x2="488" y2="105" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text class="ts" x="340" y="165" text-anchor="middle">다른 컴퓨터끼리도 통신 가능 — 웹·게임·DB가 모두 이 방식</text>`
+  }
+];
+
+let cur=0;
+
+function render(){
+  const m=M[cur];
+  document.getElementById('steplabel').textContent=`${cur+1} / ${M.length}`;
+  document.getElementById('illus').innerHTML=`<svg width="100%" viewBox="0 0 680 220" role="img"><title>${m.name}</title><desc>${m.en}</desc>${m.svg}</svg>`;
+  document.getElementById('dtitle').innerHTML=`${m.name} <span class="en">${m.en}</span>`;
+  document.getElementById('dbody').textContent=m.desc;
+  document.getElementById('dpros').textContent=m.pros;
+  document.getElementById('dcons').textContent=m.cons;
+  document.getElementById('dex').textContent=m.ex;
+  document.getElementById('dots').innerHTML=M.map((_,i)=>`<div class="dot${i===cur?' cur':i<cur?' past':''}" onclick="jump(${i})" title="${M[i].name}"></div>`).join('');
+  document.getElementById('bp').disabled=cur===0;
+  document.getElementById('bn').disabled=cur===M.length-1;
+}
+function go(d){cur=Math.max(0,Math.min(M.length-1,cur+d));render();}
+function jump(n){cur=n;render();}
+render();
+</script>
